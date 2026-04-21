@@ -4,6 +4,13 @@ build_demo/
 *.exe
 *.ppm
 
+# Python (Sculpt engine prototype)
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+sculpt/build/
+
 # Wikipedia dumps and extracted text (download via data/download_*.ps1)
 spatial_ai/data/*.bz2
 spatial_ai/data/*.xml
