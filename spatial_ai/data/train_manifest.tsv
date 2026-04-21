@@ -1,0 +1,11 @@
+# Sample training manifest.
+# Columns: text_label<TAB>before_image<TAB>after_image
+# Paths are resolved relative to the cwd you run `./build/train` from.
+# The three bundled PNGs live at the repo root (../main_hero.png etc.
+# when run from spatial_ai/).
+hero to visualization 1	../main_hero.png	../visualization_1.png
+visualization 1 to hero	../visualization_1.png	../main_hero.png
+hero to visualization 2	../main_hero.png	../visualization_2.png
+visualization 2 to hero	../visualization_2.png	../main_hero.png
+visualization 1 to visualization 2	../visualization_1.png	../visualization_2.png
+visualization 2 to visualization 1	../visualization_2.png	../visualization_1.png

@@ -1,0 +1,14 @@
+# Character training manifest — 10 synthetic silhouettes, cross-paired
+# for bimodal ingest. Format: <label>\t<before>\t<after>
+# Paths are relative to the cwd you run `./build/train` from. Run from
+# spatial_ai/ so `../assets/...` resolves to the repo-root assets/.
+ruby to azure	../assets/characters/char_01_ruby.png	../assets/characters/char_02_azure.png
+azure to moss	../assets/characters/char_02_azure.png	../assets/characters/char_03_moss.png
+moss to amber	../assets/characters/char_03_moss.png	../assets/characters/char_04_amber.png
+amber to slate	../assets/characters/char_04_amber.png	../assets/characters/char_05_slate.png
+slate to rose	../assets/characters/char_05_slate.png	../assets/characters/char_06_rose.png
+rose to noir	../assets/characters/char_06_rose.png	../assets/characters/char_07_noir.png
+noir to mint	../assets/characters/char_07_noir.png	../assets/characters/char_08_mint.png
+mint to sand	../assets/characters/char_08_mint.png	../assets/characters/char_09_sand.png
+sand to violet	../assets/characters/char_09_sand.png	../assets/characters/char_10_violet.png
+violet to ruby	../assets/characters/char_10_violet.png	../assets/characters/char_01_ruby.png
