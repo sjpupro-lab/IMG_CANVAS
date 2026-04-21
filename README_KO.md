@@ -20,6 +20,10 @@
 
 각 엔진이 독립적으로 0..1 점수 산출 → 호출자가 `joint = α·text + β·ce`로 합산. 내부에 섞인 state-key 없음.
 
+> **자매 엔진 `sculpt/`** — spatial_ai 와 파일·심볼·빌드를 전혀 공유하지 않는
+> 독립 16×16 subtractive chisel 조각 엔진. 아래 [sculpt 섹션](#sculpt-엔진--subtractive-chisel-조각)
+> 참조.
+
 ---
 
 ## 아키텍처
@@ -151,6 +155,60 @@ rarity buckets:    baseline 7 607 · ×2–4 13 · ≥4× 13
 ```
 
 링버퍼 턴 컨텍스트(최대 8), 쿼리 라우터, 세션 디스크 왕복.
+
+---
+
+## Sculpt 엔진 — subtractive chisel 조각
+
+**서브시스템이 아니라 자매 엔진.** `sculpt/` 는 명세 §10 에 따라
+`spatial_ai/` 와 파일·심볼·헤더·빌드를 전혀 공유하지 않는다. 255·255·255·255
+의 max-value 16×16 캔버스를 **깎아서** 이미지를 만든다. 모든 변형은
+`depth ← min(255, depth + Δ)` — 한번 깎은 깊이는 줄어들지 않는다 (P1,
+subtractive-only). 결정론적이고 재생 가능한 소형 그리드 생성에 쓴다.
+
+7 단계 전부 완료:
+
+| Phase | 산출물 |
+|---|---|
+| 1 — Python 프로토타입          | `sculpt/prototype/` (pytest) |
+| 2 — Go/NoGo 게이트             | Go |
+| 3 — C 엔진 + 학습 파이프       | `sculpt/{include,src}/`, `sculpt/Makefile`, `train_sculpt` |
+| 4 — 그리기 + 결정론            | `sculpt/src/draw.c`, `draw_sculpt`, `test_determinism` |
+| 5 — 편집 API (rect + replay)   | `sculpt_edit_rect`, `sculpt_replay`, `.slog` 로그, `edit_sculpt` |
+| 6 — `.slib` library 직렬화     | `sculpt_libraryio`, `-o` 플래그, CLI 확장자 자동 분기 |
+| 7 — 성공 기준 검증             | `sculpt/scripts/phase7_validate.py` (결정론 22 회 + MSE/PSNR + spatial_ai 독립성 스캔) |
+
+포맷:
+
+| 확장자 | 내용 |
+|---|---|
+| `.sraw` | `"SRAW" + LE u32 width/height/channels` + RGB 바이트 (C 외부 의존성 없는 이미지 I/O) |
+| `.slib` | `"SLIB" + version + count + next_id` + chisel 당 32 바이트 (리틀엔디언 명시 패킹) |
+| `.slog` | `"SLOG" + u32 count` + 엔트리당 12 바이트 (level, iter, cell, chisel id, noise xor) |
+
+빠른 실행:
+
+```bash
+cd sculpt
+make && make test                                    # C 유닛 테스트 7 개
+python data/convert_png_to_sraw.py --all-characters   # PNG → .sraw
+
+./build/train_sculpt -o /tmp/chars.slib data/char_*.sraw
+./build/draw_sculpt  42 /tmp/out.sraw   /tmp/chars.slib
+./build/edit_sculpt  draw 42 /tmp/out.sraw /tmp/out.slog /tmp/chars.slib
+./build/edit_sculpt  replay 42 /tmp/out.slog /tmp/replay.sraw /tmp/chars.slib
+cmp /tmp/out.sraw /tmp/replay.sraw                    # 바이트 동일
+
+python scripts/phase7_validate.py                     # 엔드투엔드 검증
+```
+
+번들 10 캐릭터에서 Phase 7 결과: 22 회 결정론 검증 모두 바이트 동일,
+C/H 32 개 파일 스캔 `spatial_ai` 참조 0 건, 혼합 학습 vs 개별 학습 정량화
+(개별이 혼합보다 MSE ~2% 우위). 현재 draw 품질 자체(PSNR ≈ 1.9 dB)는 튜닝
+영역 — `saturate_subtract` 누적으로 G/B 채널이 포화되는 구조적 한계이며,
+P1 을 지키면서 풀려면 learn 단계 contribution 재조정이 필요.
+
+자세한 phase 로그·튜닝 상수·한계는 [`sculpt/README.md`](sculpt/README.md) 에.
 
 ---
 
@@ -310,6 +368,15 @@ IMG-CANVAS/
 ├── scripts/
 │   └── windows/                  PowerShell 래퍼 (build/test/train/draw/demo)
 ├── out/                          런타임 출력 (gitignore; out/README.md 참조)
+├── sculpt/                       자매 엔진 — subtractive 16×16 chisel 조각
+│   ├── README.md                 phase 로그 + 사용법 + 한계
+│   ├── prototype/                Phase 1 Python 검증용 (pytest)
+│   ├── include/  src/            Phase 3+ C 엔진, 외부 의존성 없음
+│   ├── tests/                    C 유닛 스위트 7 개
+│   ├── tools/                    train_sculpt · draw_sculpt · edit_sculpt
+│   ├── scripts/phase7_validate.py  엔드투엔드 성공 기준 러너
+│   ├── data/                     .sraw / .slib / .slog (gitignored)
+│   └── Makefile
 ├── spatial_ai/
 │   ├── SPEC.md                   텍스트 엔진 명세 v3
 │   ├── SPEC-CE.md                이미지 CE 엔진 명세 v1
@@ -373,6 +440,7 @@ cd spatial_ai && make test
 - [`spatial_ai/SPEC-CE.md`](spatial_ai/SPEC-CE.md) — 이미지 CE 엔진 명세 v1
 - [`spatial_ai/SPEC-ENGINE.md`](spatial_ai/SPEC-ENGINE.md) — 성능 / 레이아웃 노트
 - [`spatial_ai/TODO_recluster.md`](spatial_ai/TODO_recluster.md) — recluster 로드맵
+- [`sculpt/README.md`](sculpt/README.md) — subtractive chisel 엔진 phase 로그
 - [`README.md`](README.md) — 영문 메인
 
 ---

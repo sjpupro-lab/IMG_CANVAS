@@ -18,6 +18,10 @@ Text is stored as a 256 × 256 brightness grid per clause. Images are stored as 
 
 Each side scores independently on a 0..1 scale; callers combine (`joint = α·text + β·ce`) — no mixed state-key space.
 
+> **Sibling engine under `sculpt/`** — a separate subtractive 16×16 chisel
+> carver (Python prototype + standalone C engine) that shares no files,
+> symbols, or build with `spatial_ai/`. See the [sculpt section](#sculpt-engine--subtractive-chisel-carver) below.
+
 ---
 
 ## Architecture
@@ -149,6 +153,63 @@ Supports `--target-delta R` for threshold auto-calibration and post-training rec
 ```
 
 Ring-buffer turn context (max 8), per-turn query router, session disk round-trip.
+
+---
+
+## Sculpt engine — subtractive chisel carver
+
+A **sibling engine**, not a subsystem. `sculpt/` is completely independent of
+`spatial_ai/` per its §10 rule (no shared files, symbols, headers, or build).
+It draws by *carving* a max-value 16×16 canvas — every mutation is
+`depth ← min(255, depth + Δ)` (no restorative writes). Use it when you want
+deterministic, replay-able image generation on a tiny grid.
+
+Seven phases, all landed:
+
+| Phase | Artefact |
+|---|---|
+| 1 — Python prototype          | `sculpt/prototype/` (pytest-covered) |
+| 2 — Go/NoGo gate              | Go |
+| 3 — C engine + learn pipe     | `sculpt/{include,src}/`, `sculpt/Makefile`, `train_sculpt` |
+| 4 — draw + determinism        | `sculpt/src/draw.c`, `draw_sculpt`, `test_determinism` |
+| 5 — edit API (rect + replay)  | `sculpt_edit_rect`, `sculpt_replay`, `.slog` log format, `edit_sculpt` |
+| 6 — `.slib` library serialization | `sculpt_libraryio`, `-o` flag, CLI auto-dispatch by extension |
+| 7 — success-criteria validation | `sculpt/scripts/phase7_validate.py` (22 determinism checks + MSE/PSNR + spatial_ai independence scan) |
+
+Formats:
+
+| Extension | Contents |
+|---|---|
+| `.sraw` | header `"SRAW" + LE u32 width/height/channels` + RGB bytes (image I/O without external C deps) |
+| `.slib` | header `"SLIB" + version + count + next_id` + 32-byte-per-chisel entries (LE-packed, no struct padding) |
+| `.slog` | header `"SLOG" + u32 count` + 12-byte-per-entry edit log (level, iter, cell, chisel id, noise xor) |
+
+Quick start:
+
+```bash
+cd sculpt
+make && make test                                    # 7 C unit tests
+python data/convert_png_to_sraw.py --all-characters   # PNG → .sraw
+
+./build/train_sculpt -o /tmp/chars.slib data/char_*.sraw
+./build/draw_sculpt  42 /tmp/out.sraw   /tmp/chars.slib
+./build/edit_sculpt  draw 42 /tmp/out.sraw /tmp/out.slog /tmp/chars.slib
+./build/edit_sculpt  replay 42 /tmp/out.slog /tmp/replay.sraw /tmp/chars.slib
+cmp /tmp/out.sraw /tmp/replay.sraw                    # bytewise identical
+
+python scripts/phase7_validate.py                     # end-to-end validation
+```
+
+Phase 7 numbers on the bundled 10-character set: all 22 determinism checks
+bytewise-identical, 32 C/H files scanned with zero `spatial_ai` references,
+mixed-library vs per-character training quantified (per-char beats mixed by
+~2% MSE). Visual quality itself (current PSNR ≈ 1.9 dB) is a draw-tuning
+frontier — iterative `saturate_subtract` drives G/B channels to full
+saturation; future work adjusts learn-stage contribution rather than
+relaxing P1 (subtractive-only).
+
+See [`sculpt/README.md`](sculpt/README.md) for the detailed phase log,
+tuning constants, and known limits.
 
 ---
 
@@ -308,6 +369,15 @@ IMG-CANVAS/
 ├── scripts/
 │   └── windows/                  PowerShell wrappers (build/test/train/draw/demo)
 ├── out/                          runtime outputs (gitignored; see out/README.md)
+├── sculpt/                       sibling engine — subtractive 16×16 chisel carver
+│   ├── README.md                 phase log + usage + known limits
+│   ├── prototype/                Phase 1 Python validator (pytest)
+│   ├── include/  src/            Phase 3+ C engine, no external deps
+│   ├── tests/                    7 C unit suites (cell/grid/prng/chisel/draw/edit/libio)
+│   ├── tools/                    train_sculpt · draw_sculpt · edit_sculpt
+│   ├── scripts/phase7_validate.py  end-to-end success-criteria runner
+│   ├── data/                     .sraw / .slib / .slog (gitignored)
+│   └── Makefile
 ├── spatial_ai/
 │   ├── SPEC.md                   text engine spec v3
 │   ├── SPEC-CE.md                image CE engine spec v1
@@ -371,6 +441,7 @@ All green on every commit.
 - [`spatial_ai/SPEC-CE.md`](spatial_ai/SPEC-CE.md) — image CE engine specification v1
 - [`spatial_ai/SPEC-ENGINE.md`](spatial_ai/SPEC-ENGINE.md) — performance / layout notes
 - [`spatial_ai/TODO_recluster.md`](spatial_ai/TODO_recluster.md) — recluster roadmap
+- [`sculpt/README.md`](sculpt/README.md) — subtractive chisel engine phase log
 - [`README_KO.md`](README_KO.md) — 한국어 요약
 
 ---
