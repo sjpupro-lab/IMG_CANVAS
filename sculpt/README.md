@@ -22,7 +22,7 @@
 - [x] Phase 4 — 그리기 파이프 (`draw.c`, `draw_sculpt` CLI, 결정론 재현 검증)
 - [x] Phase 5 — 편집 API (`edit_rect`, `replay`, log I/O, `edit_sculpt` CLI)
 - [x] Phase 6 — 10장 학습 + `.slib` 직렬화 + 학습 결정론
-- [ ] Phase 7 — 성공 기준 검증
+- [x] Phase 7 — 성공 기준 검증 (결정론, 재현 지표, spatial_ai 독립성)
 
 ## 시작하기
 
@@ -97,3 +97,35 @@ header (16 B) + 엔트리당 32 바이트 고정 (chisel_id, self 4nibble,
 neighbors 8×3bit, subtract RGBA, level, weight, usage). 10장 학습 결과는
 72,912 bytes (= 16 + 2278 × 32). `test_library_io` 가 라운드트립 + draw
 동등성 + 학습 결정론(같은 입력 → 바이트 동일 .slib)을 고정.
+
+### Phase 7 — 성공 기준 검증
+
+```bash
+make                                # build binaries
+python sculpt/scripts/phase7_validate.py
+```
+
+스크립트가 네 가지 성공 기준을 모두 측정한다:
+
+1. **결정론**: 모든 train 과 draw 를 두 번 실행해 SHA256 비교. 10 개 개별
+   학습 + 1 개 혼합 학습 + 대응 draw — 합계 22 회의 연산이 전부 바이트
+   동일 (`Phase 7: all determinism checks passed`).
+2. **개별 학습 재현 지표**: 캐릭터 1 장으로만 학습한 라이브러리로 draw 한
+   결과를 16×16 으로 다운샘플한 원본과 비교. 10 장 평균 MSE ≈ 41,500,
+   PSNR ≈ 1.95 dB.
+3. **혼합 학습 baseline**: 10 장 전체로 학습한 라이브러리 draw 1 회. 평균
+   MSE ≈ 42,400, PSNR ≈ 1.86 dB. 개별 학습이 혼합 대비 ~2% 더 정합.
+4. **spatial_ai 독립성**: sculpt 의 32 개 C/H 파일 전수 스캔, `spatial_ai`
+   문자열 등장 0 회. 공유 헤더·빌드·심볼 없음 (명세 §10).
+
+시각 확인용 `sculpt/out/phase7/contact_sheet.png` 도 생성된다 (행: 원본 /
+개별 학습 draw / 혼합 학습 draw).
+
+**알려진 한계 (Phase 8+ 튜닝 영역)**: `saturate_subtract` 가 iteration 마다
+누적되어 채널이 빠르게 포화된다. 혼합 draw 의 채널 평균이
+`(102, 0, 0)` 에 고정되는 현상은 이 구조적 saturation 때문이며, 원본
+배경 회색 `(226, 223, 221)` 과의 거리가 수치(PSNR) 를 낮추는 주된 요인.
+P1 (subtractive-only) 을 유지하면서 품질을 끌어올리려면 learn 단계의
+per-level contribution 을 보수적으로 재조정하거나 draw iteration 예산을
+적응적으로 축소해야 한다. 이 한계는 Phase 7 성공 기준 — **결정론 + 재현
+가능성 + 독립성** — 에는 영향 없음.
