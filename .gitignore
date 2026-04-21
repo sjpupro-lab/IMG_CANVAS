@@ -11,6 +11,9 @@ __pycache__/
 .pytest_cache/
 sculpt/build/
 
+# Sculpt raw image dumps (regenerate via sculpt/data/convert_png_to_sraw.py)
+sculpt/data/*.sraw
+
 # Wikipedia dumps and extracted text (download via data/download_*.ps1)
 spatial_ai/data/*.bz2
 spatial_ai/data/*.xml

@@ -17,14 +17,16 @@
 ## Phase 진행 상황
 
 - [x] Phase 1 — Python 프로토타입 (`prototype/`)
-- [ ] Phase 2 — 방향 결정 게이트 (호시 판단)
-- [ ] Phase 3 — C 엔진 기본 구조
+- [x] Phase 2 — 방향 결정 게이트: **Go**
+- [x] Phase 3 — C 엔진 기본 구조 (`include/`, `src/`, `tests/`, `tools/`, `Makefile`)
 - [ ] Phase 4 — 그리기 파이프
 - [ ] Phase 5 — 편집 API
-- [ ] Phase 6 — 10장 캐릭터 학습
+- [ ] Phase 6 — 10장 캐릭터 학습 (학습 파이프는 이미 Phase 3 에서 동작)
 - [ ] Phase 7 — 성공 기준 검증
 
 ## 시작하기
+
+### Phase 1 — Python 프로토타입 (16x16 검증용)
 
 ```bash
 cd sculpt/prototype
@@ -34,3 +36,16 @@ python scripts/run_demo.py
 ```
 
 상세 사용법은 `prototype/README.md`.
+
+### Phase 3 — C 엔진 (학습 파이프)
+
+```bash
+cd sculpt
+make test                                     # build + run 4 unit tests
+python data/convert_png_to_sraw.py --all-characters
+./build/train_sculpt data/char_*.sraw         # train on all 10 characters
+```
+
+명세 §10 에 따라 C 외부 의존성은 없음. 이미지 I/O 는 Python 헬퍼가
+PNG → `.sraw` (SRAW magic + LE uint32 width/height/channels + RGB bytes)
+로 한 번 변환, C 는 그 포맷을 읽는다.
