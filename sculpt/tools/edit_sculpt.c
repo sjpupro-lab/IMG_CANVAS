@@ -15,32 +15,17 @@
 
 #include "sculpt_draw.h"
 #include "sculpt_grid.h"
-#include "sculpt_learn.h"
 #include "sculpt_library.h"
 #include "sculpt_logio.h"
 #include "sculpt_rawio.h"
 #include "sculpt_tuning.h"
+#include "cli_common.h"
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
 #define LOG_CAP 4096
-
-static sculpt_library_t *learn_all(char **paths, int n_paths)
-{
-    sculpt_library_t *lib = (sculpt_library_t *)calloc(1, sizeof(*lib));
-    if (!lib) return NULL;
-    sculpt_library_init(lib);
-    for (int i = 0; i < n_paths; ++i) {
-        if (sculpt_learn_image(paths[i], lib, NULL) != 0) {
-            fprintf(stderr, "learn failed for %s\n", paths[i]);
-            free(lib);
-            return NULL;
-        }
-    }
-    return lib;
-}
 
 static int write_grid(const sculpt_grid_t *grid, const char *path)
 {
@@ -58,7 +43,7 @@ static int cmd_draw(int argc, char **argv)
     uint64_t seed = strtoull(argv[2], NULL, 0);
     const char *out_path = argv[3];
     const char *log_path = argv[4];
-    sculpt_library_t *lib = learn_all(&argv[5], argc - 5);
+    sculpt_library_t *lib = cli_load_library(&argv[5], argc - 5);
     if (!lib) return 3;
 
     sculpt_grid_t g;
@@ -87,7 +72,7 @@ static int cmd_rect(int argc, char **argv)
         (int16_t)atoi(argv[5]), (int16_t)atoi(argv[6])
     };
     const char *out_path = argv[7];
-    sculpt_library_t *lib = learn_all(&argv[8], argc - 8);
+    sculpt_library_t *lib = cli_load_library(&argv[8], argc - 8);
     if (!lib) return 3;
 
     sculpt_grid_t g;
@@ -114,7 +99,7 @@ static int cmd_replay(int argc, char **argv)
     uint64_t seed = strtoull(argv[2], NULL, 0);
     const char *log_path = argv[3];
     const char *out_path = argv[4];
-    sculpt_library_t *lib = learn_all(&argv[5], argc - 5);
+    sculpt_library_t *lib = cli_load_library(&argv[5], argc - 5);
     if (!lib) return 3;
 
     sculpt_edit_log_entry_t *log = (sculpt_edit_log_entry_t *)calloc(LOG_CAP, sizeof(*log));

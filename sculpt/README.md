@@ -21,7 +21,7 @@
 - [x] Phase 3 — C 엔진 기본 구조 (`include/`, `src/`, `tests/`, `tools/`, `Makefile`)
 - [x] Phase 4 — 그리기 파이프 (`draw.c`, `draw_sculpt` CLI, 결정론 재현 검증)
 - [x] Phase 5 — 편집 API (`edit_rect`, `replay`, log I/O, `edit_sculpt` CLI)
-- [ ] Phase 6 — 10장 캐릭터 학습 (학습 파이프는 이미 Phase 3 에서 동작)
+- [x] Phase 6 — 10장 학습 + `.slib` 직렬화 + 학습 결정론
 - [ ] Phase 7 — 성공 기준 검증
 
 ## 시작하기
@@ -80,3 +80,20 @@ cmp /tmp/out.sraw /tmp/out_replay.sraw   # 바이트 동일
 (`level`, `iter_idx`, `cell_id`, `chisel_id`, `noise_xor`). `test_edit` 가
 `draw → log capture → replay → bitwise equal`, `rect 외부 불변`, log 파일
 라운드트립 무손실을 유닛 테스트로 고정.
+
+### Phase 6 — 10장 학습 + library 직렬화
+
+```bash
+# 10장으로 학습 후 .slib 로 저장
+./build/train_sculpt -o /tmp/chars.slib data/char_*.sraw
+
+# draw/edit 은 .slib 또는 .sraw 목록 어느 쪽이든 받음 (확장자로 자동 분기)
+./build/draw_sculpt 42 /tmp/out.sraw /tmp/chars.slib
+./build/edit_sculpt draw 42 /tmp/out.sraw /tmp/out.slog /tmp/chars.slib
+```
+
+Library 바이너리 포맷 (`.slib`): `SLIB` magic + `version=1` + `count` + `next_id`
+header (16 B) + 엔트리당 32 바이트 고정 (chisel_id, self 4nibble,
+neighbors 8×3bit, subtract RGBA, level, weight, usage). 10장 학습 결과는
+72,912 bytes (= 16 + 2278 × 32). `test_library_io` 가 라운드트립 + draw
+동등성 + 학습 결정론(같은 입력 → 바이트 동일 .slib)을 고정.

@@ -13,6 +13,8 @@ sculpt/build/
 
 # Sculpt raw image dumps (regenerate via sculpt/data/convert_png_to_sraw.py)
 sculpt/data/*.sraw
+sculpt/data/*.slib
+sculpt/data/*.slog
 
 # Wikipedia dumps and extracted text (download via data/download_*.ps1)
 spatial_ai/data/*.bz2

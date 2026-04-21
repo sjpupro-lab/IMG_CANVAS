@@ -12,10 +12,10 @@
 
 #include "sculpt_draw.h"
 #include "sculpt_grid.h"
-#include "sculpt_learn.h"
 #include "sculpt_library.h"
 #include "sculpt_rawio.h"
 #include "sculpt_tuning.h"
+#include "cli_common.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -24,25 +24,15 @@
 int main(int argc, char **argv)
 {
     if (argc < 4) {
-        fprintf(stderr, "usage: %s <seed> <out.sraw> <train1.sraw> [train2.sraw ...]\n", argv[0]);
+        fprintf(stderr, "usage: %s <seed> <out.sraw> <library.slib | train*.sraw ...>\n", argv[0]);
         return 2;
     }
 
     uint64_t seed = strtoull(argv[1], NULL, 0);
     const char *out_path = argv[2];
 
-    sculpt_library_t *lib = (sculpt_library_t *)calloc(1, sizeof(*lib));
-    if (!lib) { fprintf(stderr, "oom\n"); return 1; }
-    sculpt_library_init(lib);
-
-    for (int i = 3; i < argc; ++i) {
-        int rc = sculpt_learn_image(argv[i], lib, NULL);
-        if (rc != 0) {
-            fprintf(stderr, "learn failed for %s (rc=%d)\n", argv[i], rc);
-            free(lib);
-            return 3;
-        }
-    }
+    sculpt_library_t *lib = cli_load_library(&argv[3], argc - 3);
+    if (!lib) return 3;
     printf("[train] library size: %u (L0:%u L1:%u L2:%u L3:%u)\n",
            sculpt_library_size(lib),
            sculpt_library_size_at_level(lib, 0),
