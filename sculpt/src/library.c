@@ -106,3 +106,12 @@ uint32_t sculpt_library_size_at_level(const sculpt_library_t *lib, int level)
     }
     return n;
 }
+
+const sculpt_chisel_t *sculpt_library_get_by_id(const sculpt_library_t *lib,
+                                                  uint32_t chisel_id)
+{
+    for (uint32_t i = 0; i < lib->count; ++i) {
+        if (lib->items[i].chisel_id == chisel_id) return &lib->items[i];
+    }
+    return NULL;
+}

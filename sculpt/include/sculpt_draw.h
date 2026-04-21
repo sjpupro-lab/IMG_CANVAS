@@ -43,4 +43,40 @@ void sculpt_draw(const sculpt_library_t *lib,
                  int *log_written,
                  sculpt_draw_stats_t *stats);
 
+/* Axis-aligned rect in grid coordinates. Inclusive of (x,y); extends w cells
+ * right and h cells down. Cells outside the rect are never touched.
+ */
+typedef struct {
+    int16_t x, y, w, h;
+} sculpt_rect_t;
+
+/* Phase 5: re-run the drawing loop but only mutate cells inside `rect`.
+ * The library, seed, and iter schedule determine PRNG seeding exactly as in
+ * sculpt_draw, so an edit_rect on the full canvas is bitwise equivalent to
+ * sculpt_draw on a fresh grid. Out-of-rect cells keep their current depth.
+ */
+void sculpt_edit_rect(const sculpt_library_t *lib,
+                       uint64_t master_seed,
+                       const int iters[SCULPT_NUM_LEVELS],
+                       sculpt_rect_t rect,
+                       sculpt_grid_t *grid,
+                       sculpt_edit_log_entry_t *log,
+                       int log_capacity,
+                       int *log_written,
+                       sculpt_draw_stats_t *stats);
+
+/* Replay a previously captured edit log onto `grid`. Each entry names a
+ * (level, iter_idx, cell_id, chisel_id); the chisel is looked up in `lib`
+ * and applied with the same derive_seed-based PRNG stream as the original
+ * draw, so replay is bitwise-identical to the original mutations — assuming
+ * the library still contains the chisel_ids referenced.
+ *
+ * Returns 0 on success. Non-zero if a chisel_id is missing from `lib`.
+ */
+int sculpt_replay(sculpt_grid_t *grid,
+                   const sculpt_library_t *lib,
+                   uint64_t master_seed,
+                   const sculpt_edit_log_entry_t *log,
+                   int log_count);
+
 #endif /* SCULPT_DRAW_H */

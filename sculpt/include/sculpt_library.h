@@ -45,4 +45,8 @@ int sculpt_library_lookup(const sculpt_library_t *lib,
 uint32_t sculpt_library_size(const sculpt_library_t *lib);
 uint32_t sculpt_library_size_at_level(const sculpt_library_t *lib, int level);
 
+/* Find a chisel by its id. Returns NULL if not found. Used by replay (P5). */
+const sculpt_chisel_t *sculpt_library_get_by_id(const sculpt_library_t *lib,
+                                                  uint32_t chisel_id);
+
 #endif /* SCULPT_LIBRARY_H */

@@ -17,7 +17,7 @@ OBJS     := $(patsubst $(SRC_DIR)/%.c,$(BUILD)/%.o,$(SRCS))
 TESTS    := $(patsubst $(TEST_DIR)/%.c,$(BUILD)/%,$(wildcard $(TEST_DIR)/*.c))
 TOOLS    := $(patsubst $(TOOL_DIR)/%.c,$(BUILD)/%,$(wildcard $(TOOL_DIR)/*.c))
 
-.PHONY: all test train draw clean help
+.PHONY: all test train draw edit clean help
 
 all: $(OBJS) $(TOOLS) $(TESTS)
 
@@ -43,6 +43,7 @@ $(BUILD)/%: $(TOOL_DIR)/%.c $(OBJS) | $(BUILD)
 
 train: $(BUILD)/train_sculpt
 draw:  $(BUILD)/draw_sculpt
+edit:  $(BUILD)/edit_sculpt
 
 test: $(TESTS)
 	@set -e; for t in $(TESTS); do \

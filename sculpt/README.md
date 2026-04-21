@@ -20,7 +20,7 @@
 - [x] Phase 2 — 방향 결정 게이트: **Go**
 - [x] Phase 3 — C 엔진 기본 구조 (`include/`, `src/`, `tests/`, `tools/`, `Makefile`)
 - [x] Phase 4 — 그리기 파이프 (`draw.c`, `draw_sculpt` CLI, 결정론 재현 검증)
-- [ ] Phase 5 — 편집 API
+- [x] Phase 5 — 편집 API (`edit_rect`, `replay`, log I/O, `edit_sculpt` CLI)
 - [ ] Phase 6 — 10장 캐릭터 학습 (학습 파이프는 이미 Phase 3 에서 동작)
 - [ ] Phase 7 — 성공 기준 검증
 
@@ -61,3 +61,22 @@ cmp /tmp/out.sraw /tmp/out_again.sraw  # 바이트 동일 (P4 결정론)
 
 같은 `(library, master_seed)` 쌍은 항상 비트 동일 그리드를 생성 (DESIGN.md P4).
 `test_determinism` 이 이 불변식을 유닛 테스트로 고정한다.
+
+### Phase 5 — 편집 API + 로그 재생
+
+```bash
+# 전체 draw + edit log 캡처
+./build/edit_sculpt draw 42 /tmp/out.sraw /tmp/out.slog data/char_*.sraw
+
+# log 만 가지고 빈 canvas 에서 복원
+./build/edit_sculpt replay 42 /tmp/out.slog /tmp/out_replay.sraw data/char_*.sraw
+cmp /tmp/out.sraw /tmp/out_replay.sraw   # 바이트 동일
+
+# 특정 rect 만 편집 (나머지 셀은 불변)
+./build/edit_sculpt rect 42 4 4 4 4 /tmp/out_rect.sraw data/char_*.sraw
+```
+
+편집 로그 포맷: `SLOG` magic + `uint32 count` + `count * 12 bytes` per entry
+(`level`, `iter_idx`, `cell_id`, `chisel_id`, `noise_xor`). `test_edit` 가
+`draw → log capture → replay → bitwise equal`, `rect 외부 불변`, log 파일
+라운드트립 무손실을 유닛 테스트로 고정.
