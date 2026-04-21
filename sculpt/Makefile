@@ -17,7 +17,7 @@ OBJS     := $(patsubst $(SRC_DIR)/%.c,$(BUILD)/%.o,$(SRCS))
 TESTS    := $(patsubst $(TEST_DIR)/%.c,$(BUILD)/%,$(wildcard $(TEST_DIR)/*.c))
 TOOLS    := $(patsubst $(TOOL_DIR)/%.c,$(BUILD)/%,$(wildcard $(TOOL_DIR)/*.c))
 
-.PHONY: all test train clean help
+.PHONY: all test train draw clean help
 
 all: $(OBJS) $(TOOLS) $(TESTS)
 
@@ -34,14 +34,15 @@ $(BUILD):
 $(BUILD)/%.o: $(SRC_DIR)/%.c | $(BUILD)
 	$(CC) $(CFLAGS) -c $< -o $@
 
-# Test binaries link against all objects (small codebase; fine for Phase 3).
+# Test and tool binaries link against all objects (small codebase; fine here).
 $(BUILD)/test_%: $(TEST_DIR)/test_%.c $(OBJS) | $(BUILD)
 	$(CC) $(CFLAGS) $< $(OBJS) $(LDFLAGS) -o $@
 
-$(BUILD)/train_sculpt: $(TOOL_DIR)/train_sculpt.c $(OBJS) | $(BUILD)
+$(BUILD)/%: $(TOOL_DIR)/%.c $(OBJS) | $(BUILD)
 	$(CC) $(CFLAGS) $< $(OBJS) $(LDFLAGS) -o $@
 
 train: $(BUILD)/train_sculpt
+draw:  $(BUILD)/draw_sculpt
 
 test: $(TESTS)
 	@set -e; for t in $(TESTS); do \

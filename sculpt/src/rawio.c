@@ -49,3 +49,30 @@ void sculpt_image_free(sculpt_image_t *img)
         img->rgb = NULL;
     }
 }
+
+static void write_u32_le(uint8_t b[4], uint32_t v)
+{
+    b[0] = (uint8_t)(v & 0xFF);
+    b[1] = (uint8_t)((v >> 8) & 0xFF);
+    b[2] = (uint8_t)((v >> 16) & 0xFF);
+    b[3] = (uint8_t)((v >> 24) & 0xFF);
+}
+
+int sculpt_image_save_raw(const char *path, int width, int height, const uint8_t *rgb)
+{
+    if (width <= 0 || height <= 0 || !rgb || !path) return 1;
+    FILE *f = fopen(path, "wb");
+    if (!f) return 2;
+
+    uint8_t header[16];
+    memcpy(header, SCULPT_RAW_MAGIC, 4);
+    write_u32_le(header + 4, (uint32_t)width);
+    write_u32_le(header + 8, (uint32_t)height);
+    write_u32_le(header + 12, 3u);
+
+    if (fwrite(header, 1, 16, f) != 16) { fclose(f); return 3; }
+    size_t bytes = (size_t)width * (size_t)height * 3;
+    if (fwrite(rgb, 1, bytes, f) != bytes) { fclose(f); return 4; }
+    fclose(f);
+    return 0;
+}

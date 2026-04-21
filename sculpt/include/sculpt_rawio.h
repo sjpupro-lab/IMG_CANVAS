@@ -28,4 +28,9 @@ int sculpt_image_load_raw(const char *path, sculpt_image_t *out);
 
 void sculpt_image_free(sculpt_image_t *img);
 
+/* Write an 8-bit RGB image to a .sraw file. rgb points to width*height*3 bytes.
+ * Returns 0 on success, non-zero on I/O error.
+ */
+int sculpt_image_save_raw(const char *path, int width, int height, const uint8_t *rgb);
+
 #endif /* SCULPT_RAWIO_H */

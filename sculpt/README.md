@@ -19,7 +19,7 @@
 - [x] Phase 1 — Python 프로토타입 (`prototype/`)
 - [x] Phase 2 — 방향 결정 게이트: **Go**
 - [x] Phase 3 — C 엔진 기본 구조 (`include/`, `src/`, `tests/`, `tools/`, `Makefile`)
-- [ ] Phase 4 — 그리기 파이프
+- [x] Phase 4 — 그리기 파이프 (`draw.c`, `draw_sculpt` CLI, 결정론 재현 검증)
 - [ ] Phase 5 — 편집 API
 - [ ] Phase 6 — 10장 캐릭터 학습 (학습 파이프는 이미 Phase 3 에서 동작)
 - [ ] Phase 7 — 성공 기준 검증
@@ -41,7 +41,7 @@ python scripts/run_demo.py
 
 ```bash
 cd sculpt
-make test                                     # build + run 4 unit tests
+make test                                     # build + run 5 unit tests
 python data/convert_png_to_sraw.py --all-characters
 ./build/train_sculpt data/char_*.sraw         # train on all 10 characters
 ```
@@ -49,3 +49,15 @@ python data/convert_png_to_sraw.py --all-characters
 명세 §10 에 따라 C 외부 의존성은 없음. 이미지 I/O 는 Python 헬퍼가
 PNG → `.sraw` (SRAW magic + LE uint32 width/height/channels + RGB bytes)
 로 한 번 변환, C 는 그 포맷을 읽는다.
+
+### Phase 4 — 그리기 파이프 + 결정론 재현
+
+```bash
+cd sculpt
+./build/draw_sculpt 42 /tmp/out.sraw data/char_*.sraw
+./build/draw_sculpt 42 /tmp/out_again.sraw data/char_*.sraw
+cmp /tmp/out.sraw /tmp/out_again.sraw  # 바이트 동일 (P4 결정론)
+```
+
+같은 `(library, master_seed)` 쌍은 항상 비트 동일 그리드를 생성 (DESIGN.md P4).
+`test_determinism` 이 이 불변식을 유닛 테스트로 고정한다.
