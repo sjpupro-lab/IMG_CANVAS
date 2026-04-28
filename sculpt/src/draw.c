@@ -9,14 +9,17 @@ static int abs_i(int v) { return v < 0 ? -v : v; }
 
 static int neighborhood_coherence(const sculpt_chisel_t *c,
                                     const sculpt_cell_t *cell,
-                                    const sculpt_cell_t *neighbors[8])
+                                    const sculpt_cell_t *neighbors[8],
+                                    int level)
 {
     uint8_t new_r = sculpt_saturate_subtract(cell->depth_r, c->subtract_r);
     uint8_t new_g = sculpt_saturate_subtract(cell->depth_g, c->subtract_g);
     uint8_t new_b = sculpt_saturate_subtract(cell->depth_b, c->subtract_b);
     uint8_t new_a = sculpt_saturate_subtract(cell->depth_a, c->subtract_a);
 
-    int threshold_sum = SCULPT_COHERENCE_THRESHOLD * 4;
+    int threshold_sum = SCULPT_TUNING.coherence_threshold[level] * 4;
+    int bonus   = SCULPT_TUNING.coherence_bonus[level];
+    int penalty = SCULPT_TUNING.coherence_penalty[level];
     int score = 0;
     for (int i = 0; i < 8; ++i) {
         const sculpt_cell_t *n = neighbors[i];
@@ -24,8 +27,8 @@ static int neighborhood_coherence(const sculpt_chisel_t *c,
                  + abs_i((int)new_g - n->depth_g)
                  + abs_i((int)new_b - n->depth_b)
                  + abs_i((int)new_a - n->depth_a);
-        if (diff < threshold_sum) score += SCULPT_COHERENCE_BONUS;
-        else                      score -= SCULPT_COHERENCE_PENALTY;
+        if (diff < threshold_sum) score += bonus;
+        else                      score -= penalty;
     }
     return score;
 }
@@ -110,7 +113,7 @@ static void draw_loop(const sculpt_library_t *lib,
                     const sculpt_chisel_t *best = NULL;
                     int best_score = -1000000000;
                     for (int i = 0; i < found; ++i) {
-                        int s = neighborhood_coherence(cands[i], cell, neighbors)
+                        int s = neighborhood_coherence(cands[i], cell, neighbors, level)
                               + (int)cands[i]->weight;
                         if (s > best_score) {
                             best_score = s;
