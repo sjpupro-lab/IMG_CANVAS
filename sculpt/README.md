@@ -23,6 +23,7 @@
 - [x] Phase 5 — 편집 API (`edit_rect`, `replay`, log I/O, `edit_sculpt` CLI)
 - [x] Phase 6 — 10장 학습 + `.slib` 직렬화 + 학습 결정론
 - [x] Phase 7 — 성공 기준 검증 (결정론, 재현 지표, spatial_ai 독립성)
+- [x] Phase 8 — 4-level 계층 파라미터 튜닝 (`tune_sculpt` CLI + `tune_sweep.py`)
 
 ## 시작하기
 
@@ -129,3 +130,58 @@ P1 (subtractive-only) 을 유지하면서 품질을 끌어올리려면 learn 단
 per-level contribution 을 보수적으로 재조정하거나 draw iteration 예산을
 적응적으로 축소해야 한다. 이 한계는 Phase 7 성공 기준 — **결정론 + 재현
 가능성 + 독립성** — 에는 영향 없음.
+
+### Phase 8 — 4-level 계층 파라미터 튜닝
+
+Phase 1~7 은 모든 tuning 상수가 `static const` 로 컴파일 시점에 박혀
+있었다. Phase 8 은 같은 값을 **런타임 변경 가능한 단일 구조체
+`SCULPT_TUNING`** 으로 옮기고, 기존 매크로(`SCULPT_LEVEL_MARGIN[lv]`
+등)는 새 구조체 필드를 가리키도록 재정의해 호출처 변경 없이 성립한다.
+또한 단일 스칼라였던 `COHERENCE_THRESHOLD / BONUS / PENALTY` 를
+**level 별 4-tuple** 로 승격시켜 4-level 계층 엔진을 사용하지 않던 유일한
+draw 분기까지 계층화한다.
+
+```bash
+cd sculpt
+make tune                                          # builds build/tune_sculpt
+./build/tune_sculpt --seed 42 --out /tmp/out.sraw \
+    --margin 0,8,0,32 --iters 1,1,1,1 \
+    --coh-thresh 24,96,96,16 --coh-bonus 0,2,4,4 \
+    /tmp/chars.slib
+
+python scripts/tune_sweep.py --rounds 2            # coordinate-descent sweep
+```
+
+`tune_sculpt` 의 모든 플래그는 default 와 일치할 때 `draw_sculpt` 와
+바이트 동일 출력을 낸다 (회귀 안전). 7 단위 테스트도 모두 default 로
+재실행되어 통과 — 즉 Phase 8 변경은 기존 결정론을 깨지 않는다.
+
+`tune_sweep.py` 는 좌표 하강법으로 한 번에 한 (parameter, level) 만
+변경하면서 평균 MSE 를 낮추는 후보를 찾는다. 합본 라이브러리 (10 캐릭터)
+에 대해 2 라운드 실행 시 측정된 결과:
+
+| 항목 | Baseline (Phase 7) | Sweep best |
+|---|---|---|
+| 평균 MSE | 42,352 | **32,585 (Δ −9,767, −23.1%)** |
+| PSNR    | 1.86 dB | **3.00 dB (+1.14 dB)** |
+
+채택된 best tuning:
+
+```
+--margin 0,8,0,32      # L0/L2 노이즈 제거, L3 마진 2배
+--iters 1,1,1,1        # 모든 level single-pass — saturation 누적 차단
+--top-g 8,4,2,8        # L3 후보 풀 확대
+--coh-thresh 24,96,96,16  # L1/L2 임계값 대폭 상향, L3 하향
+--coh-bonus 0,2,4,4
+--coh-penalty 1,1,1,1
+--blur-box 1,2,4,8 / --a-band 32  (default 유지)
+```
+
+가장 큰 단일 향상은 `iters L3 2→1` (Δ −3,523) 와 `margin L3 16→32` (Δ
+−1,375). **iter 가 모든 level 에서 1 로 수렴**한 것은 sculpt 가 본질적으로
+single-pass 알고리즘이어야 함을 시사 — 다중 iteration 은 학습된 chisel
+weight 보다 saturation 누적 효과가 더 커서 손해. 다음 phase 후보로
+"iter 1 로 고정 + learn 단계 contribution 재분배" 가 자연스럽다.
+
+전체 sweep 로그·확정된 config 는 `sculpt/out/phase8/best_tuning.json`
+(git-ignored) 으로 저장된다.
