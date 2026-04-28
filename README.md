@@ -89,19 +89,19 @@ make gen-tables   # regenerate baked CE delta tables (rare)
 
 ```powershell
 # From the repo root, with mingw32-make + gcc on PATH.
-scripts\windows\build.ps1               # builds engine + all tools
-scripts\windows\test.ps1                # runs every suite
+spatial_ai\scripts\windows\build.ps1               # builds engine + all tools
+spatial_ai\scripts\windows\test.ps1                # runs every suite
 
-scripts\windows\train.ps1 `
+spatial_ai\scripts\windows\train.ps1 `
   -Manifest spatial_ai\data\characters_manifest.tsv `
   -Name characters                      # → out\models\characters.{spai,imem}
 
-scripts\windows\draw.ps1 `
+spatial_ai\scripts\windows\draw.ps1 `
   -Memory out\models\characters.imem `
   -Model  out\models\characters.spai `
   -SeedKf 0 -Frames 8 -Name kf0         # → out\draw\kf0\final.png (+frames\)
 
-scripts\windows\demo.ps1 `
+spatial_ai\scripts\windows\demo.ps1 `
   -Image assets\main_hero.png `
   -Name hero                            # → out\demo\hero_{plain,masked}.png
 ```
@@ -361,13 +361,9 @@ Older readers stop cleanly at unknown tags. `ai_peek_header_ex` surfaces `kf_cou
 
 ```
 IMG-CANVAS/
-├── assets/
+├── assets/                       shared image assets (PNG)
 │   ├── main_hero.png  visualization_{1,2}.png
 │   └── characters/               bundled 10-char training set
-├── docs/
-│   └── benchmarks/v2_text_engine/  wiki5k / wiki20k reports
-├── scripts/
-│   └── windows/                  PowerShell wrappers (build/test/train/draw/demo)
 ├── out/                          runtime outputs (gitignored; see out/README.md)
 ├── sculpt/                       sibling engine — subtractive 16×16 chisel carver
 │   ├── README.md                 phase log + usage + known limits
@@ -384,6 +380,8 @@ IMG-CANVAS/
 │   ├── SPEC-ENGINE.md            optimisation notes
 │   ├── TODO_recluster.md         recluster / calibration roadmap
 │   ├── README.md                 text-engine local README (KR)
+│   ├── docs/benchmarks/          wiki5k / wiki20k engine reports
+│   ├── scripts/windows/          PowerShell wrappers (build/test/train/draw/demo)
 │   ├── Makefile
 │   ├── include/
 │   │   ├── spatial_*.h           text engine (12 headers)
@@ -422,7 +420,7 @@ All green on every commit.
 
 ## Benchmarks
 
-- **Text** — `docs/benchmarks/v2_text_engine/` — reference wiki5k and wiki20k runs with matching / self-recall / word-prediction / byte-perplexity / generation numbers under the v2 engine (commit `4c4e108`).
+- **Text** — `spatial_ai/docs/benchmarks/v2_text_engine/` — reference wiki5k and wiki20k runs with matching / self-recall / word-prediction / byte-perplexity / generation numbers under the v2 engine (commit `4c4e108`).
 - **Image** — bimodal `./build/train` on the bundled character manifest reproduces `+7 633 deltas / 10 kf / 10 ce snapshots / 13 + 13 rare-bucket hits`. Multi-scale learn on a 1280 × 720 subject produces `+2 560 deltas` with tier spread `T1 814 · T2 1 425 · T3 321`.
 
 ---
